@@ -22,14 +22,14 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
     gradient_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
     gradient_magnitude = np.uint8(gradient_magnitude)
 
-    ret, gradient_thresh = cv2.threshold(gradient_magnitude, 150, 255, cv2.THRESH_BINARY) 
+    #ret, gradient_thresh = cv2.threshold(gradient_magnitude, 150, 255, cv2.THRESH_BINARY) 
 
 
 
     lines = cv2.HoughLinesP(gradient_magnitude, 
                             rho=1, 
                             theta=np.pi/180, 
-                            threshold=600, 
+                            threshold=100, 
                             minLineLength=100, 
                             maxLineGap=10)
 
@@ -47,8 +47,10 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
     cv2.imshow('gray', gray)
     cv2.imshow('gray_threst', gray_thresh)
     cv2.imshow('Gradient Magnitude (Sobel)', gradient_magnitude)
+
     #cv2.imshow('sobel threst', gradient_thresh)
-    #cv2.imshow('Hough', line_image)
+
+    cv2.imshow('Hough', line_image)
 
     
     cv2.waitKey(0)
