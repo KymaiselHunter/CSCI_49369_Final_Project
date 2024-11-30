@@ -73,4 +73,4 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 if __name__ == "__main__":
     
-    sobel_hough_fill_holes('image2.png', threshold=127, output_path='binary_output_filled.png')
+    sobel_hough_fill_holes('./images/image2.png', threshold=127, output_path='binary_output_filled.png')
