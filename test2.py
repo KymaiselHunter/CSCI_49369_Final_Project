@@ -2,6 +2,23 @@
 import cv2
 import numpy as np
 
+# nice resizeing 
+# stolen from : https://stackoverflow.com/questions/35180764/opencv-python-image-too-big-to-display
+def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
+    dim = None
+    (h, w) = image.shape[:2]
+
+    if width is None and height is None:
+        return image
+    if width is None:
+        r = height / float(h)
+        dim = (int(w * r), height)
+    else:
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    return cv2.resize(image, dim, interpolation=inter)
+
 def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output_filled.png'):
 
 
@@ -42,15 +59,12 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
             cv2.line(line_image, (x1, y1), (x2, y2), 255, 2)  # Draw white lines
     
 
-    
+    DISPLAY_WIDTH = 500
     #cv2.imshow('omg', image)
-    cv2.imshow('gray', cv2.resize(gray, (960,540)))
-    cv2.imshow('gray_threst', cv2.resize(gray_thresh, (960,540)))
-    cv2.imshow('Gradient Magnitude (Sobel)', cv2.resize(gradient_magnitude, (960,540)))
-
-    #cv2.imshow('sobel threst', gradient_thresh)
-
-    cv2.imshow('Hough', cv2.resize(line_image, (960,540)))
+    cv2.imshow('gray', ResizeWithAspectRatio(image=gray, width=DISPLAY_WIDTH))
+    cv2.imshow('gray_thresh', ResizeWithAspectRatio(image=gray_thresh, width=DISPLAY_WIDTH))
+    cv2.imshow('Gradient Magnitude (Sobel)', ResizeWithAspectRatio(image=gradient_magnitude, width=DISPLAY_WIDTH))
+    cv2.imshow('Hough', ResizeWithAspectRatio(image=line_image, width=DISPLAY_WIDTH))
 
     
     cv2.waitKey(0)
