@@ -12,7 +12,7 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    ret, gray_thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY) 
+    ret, gray_thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY) 
 
 
     sobel_x = cv2.Sobel(gray_thresh, cv2.CV_64F, 1, 0, ksize=3)  #Horizontal edges
@@ -44,13 +44,13 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
     
     #cv2.imshow('omg', image)
-    cv2.imshow('gray', gray)
-    cv2.imshow('gray_threst', gray_thresh)
-    cv2.imshow('Gradient Magnitude (Sobel)', gradient_magnitude)
+    cv2.imshow('gray', cv2.resize(gray, (960,540)))
+    cv2.imshow('gray_threst', cv2.resize(gray_thresh, (960,540)))
+    cv2.imshow('Gradient Magnitude (Sobel)', cv2.resize(gradient_magnitude, (960,540)))
 
     #cv2.imshow('sobel threst', gradient_thresh)
 
-    cv2.imshow('Hough', line_image)
+    cv2.imshow('Hough', cv2.resize(line_image, (960,540)))
 
     
     cv2.waitKey(0)
@@ -62,4 +62,4 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 if __name__ == "__main__":
     
-    sobel_hough_fill_holes('./images/image2.png', threshold=127, output_path='binary_output_filled.png')
+    sobel_hough_fill_holes('./images/image1.jpg', threshold=127, output_path='binary_output_filled.png')
