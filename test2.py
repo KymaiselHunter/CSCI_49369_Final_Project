@@ -74,6 +74,53 @@ def drawLineFromHough(image, r, theta):
       # drawn. In this case, it is red.
       cv2.line(image, (x1, y1), (x2, y2), 255, 2)
 
+def getMorphologicalProcessedImage(image):
+    # Define an elongated kernel
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (50, 1))  # Horizontal extension
+    dilated = cv2.dilate(image, kernel, iterations=1)
+
+    # Define an elongated kernel for closing
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (50, 1))  # Adjust kernel size
+    closed = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
+
+    _, processed = cv2.threshold(closed, 127, 255, cv2.THRESH_BINARY)
+
+    return processed
+
+
+#https://stackoverflow.com/questions/56589691/how-to-leave-only-the-largest-blob-in-an-image
+def getBiggestBlob(image):
+    # Generate intermediate image; use morphological closing to keep parts of the brain together
+    inter = cv2.morphologyEx(image, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+
+    # Find largest contour in intermediate image
+    cnts, _ = cv2.findContours(inter, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    cnt = max(cnts, key=cv2.contourArea)
+
+    # Output
+    out = np.zeros(image.shape, np.uint8)
+    cv2.drawContours(out, [cnt], -1, 255, cv2.FILLED)
+    return cv2.bitwise_and(image, out)
+
+def getCropBounds(image):
+    # Find rows that contain at least one white pixel (255)
+    rows_with_white = np.where(np.any(image == 255, axis=1))[0]
+
+    bottom = rows_with_white[-1]
+    top = rows_with_white[0]
+
+    cols_with_white = np.where(np.any(image == 255, axis=0))[0]
+
+    left = cols_with_white[0]
+    right = cols_with_white[-1]
+
+    return bottom, top, left, right
+
+def cropImage(image, top_row, bottom_row, left_col, right_col):
+    # Crop the image using numpy slicing
+    cropped_image = image[top_row:bottom_row, left_col:right_col]
+    return cropped_image
+
 
 def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output_filled.png'):
 
@@ -140,19 +187,34 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
     cv2.imshow('Rotate OG', ResizeWithAspectRatio(image=rotated_original, width=DISPLAY_WIDTH))
     cv2.imshow('Rotate Grad', ResizeWithAspectRatio(image=rotated_gradiant, width=DISPLAY_WIDTH))
 
-    # defining the kernel i.e. Structuring element 
-    #kernel = np.ones((5, 5), np.uint8) 
+    ## defining the kernel i.e. Structuring element 
+    ##kernel = np.ones((5, 5), np.uint8) 
     
-    kernel_size = max(5, image.shape[0] // 100)  # Adjust kernel size dynamically
-    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    #kernel_size = max(5, image.shape[0] // 100)  # Adjust kernel size dynamically
+    #kernel = np.ones((kernel_size, kernel_size), np.uint8)
 
       
-    # defining the closing function  
-    # over the image and structuring element 
-    closing = cv2.morphologyEx(rotated_gradiant, cv2.MORPH_CLOSE, kernel)
-    #closing = cv2.morphologyEx(rotated_gradiant, cv2.MORPH_RECT, kernel)
-    cv2.imshow('Closing', closing)
-    
+    ## defining the closing function  
+    ## over the image and structuring element 
+    #closing = cv2.morphologyEx(rotated_gradiant, cv2.MORPH_CLOSE, kernel)
+    ##closing = cv2.morphologyEx(rotated_gradiant, cv2.MORPH_RECT, kernel)
+    #cv2.imshow('Closing', closing)
+
+    processed = getMorphologicalProcessedImage(rotated_gradiant)
+    cv2.imshow('Closing', ResizeWithAspectRatio(processed))
+
+    blob = getBiggestBlob(processed)
+    cv2.imshow('blob', blob)
+
+    bot, top,left,right = getCropBounds(blob)
+    #print(bot, top)
+    #test = processed
+
+    #test[top,:] = 255
+    #cv2.imshow('top', test)
+    cv2.imshow('cropped', cropImage(rotated_original, top, bot, left, right))
+   
+
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -162,4 +224,4 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 if __name__ == "__main__":
     
-    sobel_hough_fill_holes('./images/image2.png', threshold=127, output_path='binary_output_filled.png')
+    sobel_hough_fill_holes('./images/image3.png', threshold=127, output_path='binary_output_filled.png')
