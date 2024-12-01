@@ -44,6 +44,37 @@ def rotation(image, angleInDegrees):
     return outImg
 
 
+def drawLineFromHough(image, r, theta):
+    # Stores the value of cos(theta) in a
+      a = np.cos(theta)
+
+      # Stores the value of sin(theta) in b
+      b = np.sin(theta)
+
+      # x0 stores the value rcos(theta)
+      x0 = a*r
+
+      # y0 stores the value rsin(theta)
+      y0 = b*r
+
+      # x1 stores the rounded off value of (rcos(theta)-1000sin(theta))
+      x1 = int(x0 + 10000*(-b))
+
+      # y1 stores the rounded off value of (rsin(theta)+1000cos(theta))
+      y1 = int(y0 + 10000*(a))
+
+      # x2 stores the rounded off value of (rcos(theta)+1000sin(theta))
+      x2 = int(x0 - 10000*(-b))
+
+      # y2 stores the rounded off value of (rsin(theta)-1000cos(theta))
+      y2 = int(y0 - 10000*(a))
+
+      # cv2.line draws a line in img from the point(x1,y1) to (x2,y2).
+      # (0,0,255) denotes the colour of the line to be
+      # drawn. In this case, it is red.
+      cv2.line(image, (x1, y1), (x2, y2), 255, 2)
+
+
 def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output_filled.png'):
 
 
@@ -62,7 +93,8 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 
     gradient_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
-    gradient_magnitude = np.uint8(gradient_magnitude)
+    gradient_magnitude = np.uint8(255 * gradient_magnitude / np.max(gradient_magnitude))
+
 
     #ret, gradient_thresh = cv2.threshold(gradient_magnitude, 150, 255, cv2.THRESH_BINARY) 
 
@@ -71,48 +103,26 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
     lines = cv2.HoughLines(gradient_magnitude, 
                             rho=1, 
                             theta=np.pi/180, 
-                            threshold=300)
+                            threshold=200)
 
     #get angles
     normal_angles = []    
     for line in lines:
-        r, theta = line[0]
+        rho, theta = line[0]
         normal_angles.append(np.degrees(theta) % 180)
 
+        drawLineFromHough(line_image,rho,theta=theta)
 
-        # Stores the value of cos(theta) in a
-        a = np.cos(theta)
-
-        # Stores the value of sin(theta) in b
-        b = np.sin(theta)
-
-        # x0 stores the value rcos(theta)
-        x0 = a*r
-
-        # y0 stores the value rsin(theta)
-        y0 = b*r
-
-        # x1 stores the rounded off value of (rcos(theta)-1000sin(theta))
-        x1 = int(x0 + 10000*(-b))
-
-        # y1 stores the rounded off value of (rsin(theta)+1000cos(theta))
-        y1 = int(y0 + 10000*(a))
-
-        # x2 stores the rounded off value of (rcos(theta)+1000sin(theta))
-        x2 = int(x0 - 10000*(-b))
-
-        # y2 stores the rounded off value of (rsin(theta)-1000cos(theta))
-        y2 = int(y0 - 10000*(a))
-
-        # cv2.line draws a line in img from the point(x1,y1) to (x2,y2).
-        # (0,0,255) denotes the colour of the line to be
-        # drawn. In this case, it is red.
-        cv2.line(line_image, (x1, y1), (x2, y2), 255, 2)
+        
         
     #print(normal_angles)
     #find dom angle
     angle_counter = Counter(normal_angles)
     dom_angle = max(angle_counter, key=angle_counter.get)
+
+    angle_bins = np.histogram(normal_angles, bins=18, range=(0, 180))
+    dom_angle = angle_bins[1][np.argmax(angle_bins[0])]
+
     print(dom_angle)
     
     DISPLAY_WIDTH = 500
@@ -130,6 +140,18 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
     cv2.imshow('Rotate OG', ResizeWithAspectRatio(image=rotated_original, width=DISPLAY_WIDTH))
     cv2.imshow('Rotate Grad', ResizeWithAspectRatio(image=rotated_gradiant, width=DISPLAY_WIDTH))
 
+    # defining the kernel i.e. Structuring element 
+    #kernel = np.ones((5, 5), np.uint8) 
+    
+    kernel_size = max(5, image.shape[0] // 100)  # Adjust kernel size dynamically
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+
+      
+    # defining the closing function  
+    # over the image and structuring element 
+    closing = cv2.morphologyEx(rotated_gradiant, cv2.MORPH_CLOSE, kernel)
+    #closing = cv2.morphologyEx(rotated_gradiant, cv2.MORPH_RECT, kernel)
+    cv2.imshow('Closing', closing)
     
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -140,4 +162,4 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 if __name__ == "__main__":
     
-    sobel_hough_fill_holes('./images/image3.png', threshold=127, output_path='binary_output_filled.png')
+    sobel_hough_fill_holes('./images/image2.png', threshold=127, output_path='binary_output_filled.png')
