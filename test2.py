@@ -25,12 +25,6 @@ def ResizeWithAspectRatio(image, width=None, height=None, inter=cv2.INTER_AREA):
 
 #nice rotaiton
 # stolen from : https://stackoverflow.com/questions/9041681/opencv-python-rotate-image-by-x-degrees-around-specific-point
-def rotate_image(image, angle):
-    image_center = tuple(np.array(image.shape[1::-1]) / 2)
-    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-    result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
-    return result
-
 def rotation(image, angleInDegrees):
     h, w = image.shape[:2]
     img_c = (w / 2, h / 2)
@@ -121,15 +115,20 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
     dom_angle = max(angle_counter, key=angle_counter.get)
     print(dom_angle)
     
-    roatated_original = rotation(image, dom_angle - 90)
-
     DISPLAY_WIDTH = 500
     #cv2.imshow('omg', image)
     cv2.imshow('gray', ResizeWithAspectRatio(image=gray, width=DISPLAY_WIDTH))
     cv2.imshow('gray_thresh', ResizeWithAspectRatio(image=gray_thresh, width=DISPLAY_WIDTH))
     cv2.imshow('Gradient Magnitude (Sobel)', ResizeWithAspectRatio(image=gradient_magnitude, width=DISPLAY_WIDTH))
     cv2.imshow('Hough', ResizeWithAspectRatio(image=line_image, width=DISPLAY_WIDTH))
-    cv2.imshow('Rotate', ResizeWithAspectRatio(image=roatated_original, width=DISPLAY_WIDTH))
+
+
+    rotated_original = rotation(image, dom_angle - 90)
+    rotated_gradiant = rotation(gradient_magnitude, dom_angle - 90)
+
+
+    cv2.imshow('Rotate OG', ResizeWithAspectRatio(image=rotated_original, width=DISPLAY_WIDTH))
+    cv2.imshow('Rotate Grad', ResizeWithAspectRatio(image=rotated_gradiant, width=DISPLAY_WIDTH))
 
     
     cv2.waitKey(0)
@@ -141,4 +140,4 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 if __name__ == "__main__":
     
-    sobel_hough_fill_holes('./images/image.jpg', threshold=127, output_path='binary_output_filled.png')
+    sobel_hough_fill_holes('./images/image3.png', threshold=127, output_path='binary_output_filled.png')
