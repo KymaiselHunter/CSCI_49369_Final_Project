@@ -121,6 +121,43 @@ def cropImage(image, top_row, bottom_row, left_col, right_col):
     cropped_image = image[top_row:bottom_row, left_col:right_col]
     return cropped_image
 
+#code from https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
+def black_keys(cropped):
+    #make the black keys highlighted
+    thres_cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    #thres_cropped = cv2.blur(thres_cropped,(3,3))
+    _, new_cropped = cv2.threshold(thres_cropped,127,255,cv2.THRESH_BINARY_INV)
+    cv2.imshow('thres_cropped', new_cropped)
+    kernel = np.ones((3,3),np.uint8)
+    opening = cv2.morphologyEx(new_cropped,cv2.MORPH_OPEN,kernel, iterations = 2)
+
+    sure_bg = cv2.dilate(opening,kernel,iterations=3)
+
+    dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+    ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
+
+    # Finding unknown region
+    sure_fg = np.uint8(sure_fg)
+    unknown = cv2.subtract(sure_bg,sure_fg)
+
+    # Marker labelling
+    ret, markers = cv2.connectedComponents(sure_fg)
+
+    # Add one to all labels so that sure background is not 0, but 1
+    markers = markers+1
+
+    # Now, mark the region of unknown with zero
+    markers[unknown==255] = 0
+
+    temp = cropped
+
+    markers = cv2.watershed(temp,markers)
+    temp[markers == -1] = [255,255,0]
+
+    cv2.imshow('cropped_black_keys', temp)
+
+
+
 
 def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output_filled.png'):
 
@@ -215,12 +252,37 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
     cv2.imshow('cropped', cropImage(rotated_original, top, bot, left, right))
    
 
+
+
+
+
+    #Detecting black keys (testing different sizes of the cropped image)
+    cropped = cropImage(rotated_original, top, bot, left, right)
+    bigger_cropped = cropImage(rotated_original, top-10, bot+10, left-10, right+10)
+    smaller_cropped = cropImage(rotated_original, top+10, bot-10, left+10, right-10)
+    #cv2.imshow('bigger_cropped', bigger_cropped)
+
+    black_keys(cropped)
+    #cv2.imshow('cropped_black_keys', black_keys(cropped))
+    #cv2.imshow('bigger_cr_black_keys', bigger_cropped)
+    #cv2.imshow('smaller_cr_black_keys', black_keys(smaller_cropped))
+    #cv2.imshow('test', cropped)
+    
+
+
+
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
     
     #cv2.imwrite(output_path, binary_filled)
     #print(f"Filled binary image saved as {output_path}")
+
+
+    
+
+
+
 
 if __name__ == "__main__":
     
