@@ -18,6 +18,7 @@ import pianoFunctions as piano
 
 black_frame = np.zeros((100,500,3), dtype =np.uint8)
 piano_frame = black_frame
+piano_timestamp = 0
 
 def main():
   model_path = './models/hand_landmarker.task'
@@ -76,10 +77,25 @@ def main():
       #print(type(output_image))
       #piano.sobel_hough_fill_holes(output_image)
       #cv2.imshow('test', test)
+      global piano_timestamp
+      if piano_timestamp + 5000 > timestamp_ms:
+        print('exit', piano_timestamp, timestamp_ms)
+        return
+      print(piano_timestamp, timestamp_ms)
+
+      piano_timestamp = timestamp_ms
+
+
       global piano_frame
+      found = piano.detect_piano(output_image.numpy_view())
+      if found is None:
+        return
+      else:
+        #print('uh huh')
+        piano_frame = found
+
       #piano_frame = output_image.numpy_view()
-      piano_frame = piano.detect_piano(output_image.numpy_view())
-      print('pelase?')
+      #print('pelase?')
       return
 
 

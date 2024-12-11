@@ -217,15 +217,6 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
   return cropImage
 
-  #cv2.imshow('cropped', cropImage(rotated_original, top, bot, left, right))
-  
-
-  #cv2.waitKey(0)
-  #cv2.destroyAllWindows()
-
-  
-  #cv2.imwrite(output_path, binary_filled)
-  #print(f"Filled binary image saved as {output_path}")
 
 def detect_piano(image):
   if image is None:
@@ -234,6 +225,7 @@ def detect_piano(image):
 
   # gray scale the image
   gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
 
   #threshold the gray to get a binary image, we only want the white piano keys really
   ret, gray_thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY) 
@@ -246,22 +238,24 @@ def detect_piano(image):
   gradient_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
   gradient_magnitude = np.uint8(255 * gradient_magnitude / np.max(gradient_magnitude))
 
-
   # perform the hough transformation, where we will use this to find the dominant orientation
-  line_image = np.zeros_like(gray)
+  #line_image = np.zeros_like(gray)
 
   lines = cv2.HoughLines(gradient_magnitude, 
                           rho=1, 
                           theta=np.pi/180, 
                           threshold=200)
-
   #get all angles
   normal_angles = []    
+
+  print(type(lines))
+  if lines is None:
+    return None
   for line in lines:
     rho, theta = line[0]
     normal_angles.append(np.degrees(theta) % 180)
 
-    drawLineFromHough(line_image,rho,theta=theta)
+    #drawLineFromHough(line_image,rho,theta=theta)
 
       
   #calculate the dominant angle
