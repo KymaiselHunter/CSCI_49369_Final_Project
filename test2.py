@@ -121,17 +121,19 @@ def cropImage(image, top_row, bottom_row, left_col, right_col):
     cropped_image = image[top_row:bottom_row, left_col:right_col]
     return cropped_image
 
-#code from https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
+#edited code from https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
 def black_keys(cropped):
     #make the black keys highlighted
     thres_cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
-    #thres_cropped = cv2.blur(thres_cropped,(3,3))
+    thres_cropped = cv2.blur(thres_cropped,(3,3))
     _, new_cropped = cv2.threshold(thres_cropped,127,255,cv2.THRESH_BINARY_INV)
-    cv2.imshow('thres_cropped', new_cropped)
-    kernel = np.ones((3,3),np.uint8)
+    
+    #kernel = np.ones((3,3),np.uint8)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 6))
     opening = cv2.morphologyEx(new_cropped,cv2.MORPH_OPEN,kernel, iterations = 2)
-
+    cv2.imshow('thres_cropped', opening)
     sure_bg = cv2.dilate(opening,kernel,iterations=3)
+
 
     dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
     ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
@@ -146,6 +148,7 @@ def black_keys(cropped):
     # Add one to all labels so that sure background is not 0, but 1
     markers = markers+1
 
+
     # Now, mark the region of unknown with zero
     markers[unknown==255] = 0
 
@@ -154,7 +157,37 @@ def black_keys(cropped):
     markers = cv2.watershed(temp,markers)
     temp[markers == -1] = [255,255,0]
 
+    highlighted_image = cropped.copy()
+    black_key_coords = []
+
+    #for loop to traverse through the "object" area
+    for marker in range(2, markers.max() + 1):
+        #create a mask for each segment
+        mask = (markers == marker).astype(np.uint8) * 255
+
+        #find contours
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        
+        
+        for contour in contours:
+            #get the "edge" of the object
+            x, y, w, h = cv2.boundingRect(contour)
+
+            #store the coordinates
+            black_key_coords.append((x, y, w, h))  
+
+            #draw rectangle on the highlighted image
+            cv2.rectangle(highlighted_image, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
     cv2.imshow('cropped_black_keys', temp)
+    cv2.imshow('testy', highlighted_image)
+
+    return black_key_coords
+    
+    
+    
+    
 
 
 
@@ -258,12 +291,12 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
     #Detecting black keys (testing different sizes of the cropped image)
     cropped = cropImage(rotated_original, top, bot, left, right)
-    bigger_cropped = cropImage(rotated_original, top-10, bot+10, left-10, right+10)
-    smaller_cropped = cropImage(rotated_original, top+10, bot-10, left+10, right-10)
+    #bigger_cropped = cropImage(rotated_original, top-10, bot+10, left-10, right+10)
+    smaller_cropped = cropImage(rotated_original, top+10, bot-10, left, right)
     #cv2.imshow('bigger_cropped', bigger_cropped)
 
-    black_keys(cropped)
-    #cv2.imshow('cropped_black_keys', black_keys(cropped))
+    black_keys_val = black_keys(smaller_cropped)
+    cv2.imshow('cropped_black_keys', cropped)
     #cv2.imshow('bigger_cr_black_keys', bigger_cropped)
     #cv2.imshow('smaller_cr_black_keys', black_keys(smaller_cropped))
     #cv2.imshow('test', cropped)
@@ -286,4 +319,4 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 if __name__ == "__main__":
     
-    sobel_hough_fill_holes('./images/image3.png', threshold=127, output_path='binary_output_filled.png')
+    sobel_hough_fill_holes('./images/image2.png', threshold=127, output_path='binary_output_filled.png')
