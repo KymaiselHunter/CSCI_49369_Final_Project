@@ -250,11 +250,11 @@ def detect_piano(image):
 
   blob = getBiggestBlob(processed)
   #cv2.imshow('blob', blob)
-
+  #return blob
 
   # once the keys are found, we can find the bounds of the keys and crop the roatated image
-  bot, top,left,right = getCropBounds(blob)
+  bot, top,left,right = getCropBounds(blob.copy())
   cropped = cropImage(image, top, bot, left, right)
 
-  return cropped, blob
+  return cropped
 

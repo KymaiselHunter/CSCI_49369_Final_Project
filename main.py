@@ -20,8 +20,6 @@ black_frame = np.zeros((100,500,3), dtype =np.uint8)
 piano_frame = black_frame
 piano_timestamp = 0
 
-piano_blob = black_frame
-
 def main():
   model_path = './models/hand_landmarker.task'
 
@@ -89,14 +87,12 @@ def main():
 
 
       global piano_frame
-      global piano_blob
-      found, found2 = piano.detect_piano(output_image.numpy_view())
+      found = piano.detect_piano(output_image.numpy_view())
       if found is None:
         return
       else:
         #print('uh huh')
         piano_frame = found
-        piano_blob = found2
 
       #piano_frame = output_image.numpy_view()
       #print('pelase?')
@@ -154,8 +150,6 @@ def main():
 
       cv2.imshow('cam',frame)#cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
       cv2.imshow('piano', piano_frame)
-      cv2.imshow('bob', piano_frame)
-
 
 
 
