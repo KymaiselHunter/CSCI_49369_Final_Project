@@ -127,95 +127,73 @@ def cropImage(image, top_row, bottom_row, left_col, right_col):
   cropped_image = image[top_row:bottom_row, left_col:right_col]
   return cropped_image
 
-
-def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output_filled.png'):
-
-  # read image 
-  image = cv2.imread(image_path)
-  if image is None:
-    print(f"Error: Unable to read image at {image_path}")
-    return
-
-  # gray scale the image
-  gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-  #threshold the gray to get a binary image, we only want the white piano keys really
-  ret, gray_thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY) 
-
-  # perform a quick edge detection
-  sobel_x = cv2.Sobel(gray_thresh, cv2.CV_64F, 1, 0, ksize=3)  #Horizontal edges
-  sobel_y = cv2.Sobel(gray_thresh, cv2.CV_64F, 0, 1, ksize=3)  #Vertical edges
+#edited code from https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
+def black_keys(cropped):
+    #make the black keys highlighted
+    thres_cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    thres_cropped = cv2.blur(thres_cropped,(3,3))
+    _, new_cropped = cv2.threshold(thres_cropped,127,255,cv2.THRESH_BINARY_INV)
+    
+    #kernel = np.ones((3,3),np.uint8)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 6))
+    opening = cv2.morphologyEx(new_cropped,cv2.MORPH_OPEN,kernel, iterations = 2)
+    #cv2.imshow('thres_cropped', opening)
+    sure_bg = cv2.dilate(opening,kernel,iterations=3)
 
 
-  gradient_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
-  gradient_magnitude = np.uint8(255 * gradient_magnitude / np.max(gradient_magnitude))
+    dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+    ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
+
+    return thres_cropped
+    # Finding unknown region
+    sure_fg = np.uint8(sure_fg)
+    unknown = cv2.subtract(sure_bg,sure_fg)
+
+    # Marker labelling
+    ret, markers = cv2.connectedComponents(sure_fg)
+
+    # Add one to all labels so that sure background is not 0, but 1
+    markers = markers+1
 
 
-  # perform the hough transformation, where we will use this to find the dominant orientation
-  line_image = np.zeros_like(gray)
+    # Now, mark the region of unknown with zero
+    markers[unknown==255] = 0
 
-  lines = cv2.HoughLines(gradient_magnitude, 
-                          rho=1, 
-                          theta=np.pi/180, 
-                          threshold=200)
+    temp = cropped
 
-  #get all angles
-  normal_angles = []    
-  for line in lines:
-    rho, theta = line[0]
-    normal_angles.append(np.degrees(theta) % 180)
+    markers = cv2.watershed(temp,markers)
+    temp[markers == -1] = [255,255,0]
 
-    drawLineFromHough(line_image,rho,theta=theta)
+    highlighted_image = cropped.copy()
+    black_key_coords = []
 
-      
-  #calculate the dominant angle
+    #for loop to traverse through the "object" area
+    for marker in range(2, markers.max() + 1):
+        #create a mask for each segment
+        mask = (markers == marker).astype(np.uint8) * 255
 
-  #print(normal_angles)
-  #find dom angle
-  #angle_counter = Counter(normal_angles)
-  #dom_angle = max(angle_counter, key=angle_counter.get)
+        #find contours
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-  angle_bins = np.histogram(normal_angles, bins=18, range=(0, 180))
-  dom_angle = angle_bins[1][np.argmax(angle_bins[0])]
+        
+        
+        for contour in contours:
+            #get the "edge" of the object
+            x, y, w, h = cv2.boundingRect(contour)
 
-  print(dom_angle)
-  
-  # display all of the images so far
-  DISPLAY_WIDTH = 500
-  #cv2.imshow('omg', image)
-  #cv2.imshow('gray', ResizeWithAspectRatio(image=gray, width=DISPLAY_WIDTH))
-  #cv2.imshow('gray_thresh', ResizeWithAspectRatio(image=gray_thresh, width=DISPLAY_WIDTH))
-  #cv2.imshow('Gradient Magnitude (Sobel)', ResizeWithAspectRatio(image=gradient_magnitude, width=DISPLAY_WIDTH))
-  #cv2.imshow('Hough', ResizeWithAspectRatio(image=line_image, width=DISPLAY_WIDTH))
+            #store the coordinates
+            black_key_coords.append((x, y, w, h))  
 
+            #draw rectangle on the highlighted image
+            cv2.rectangle(highlighted_image, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-  # perform the roation in respect to the dominant angle, and display the results
+    #cv2.imshow('cropped_black_keys', temp)
+    #cv2.imshow('testy', highlighted_image)
 
-  rotated_original = rotation(image, dom_angle - 90)
-  rotated_gradiant = rotation(gradient_magnitude, dom_angle - 90)
+    return black_key_coords
+    
+    
 
-
-  #cv2.imshow('Rotate OG', ResizeWithAspectRatio(image=rotated_original, width=DISPLAY_WIDTH))
-  #cv2.imshow('Rotate Grad', ResizeWithAspectRatio(image=rotated_gradiant, width=DISPLAY_WIDTH))
-
-  # use morphlogical image processing to extend edge lines horizontally 
-  # which is then blobbed together, allowing us to find the piano keys, as they will be the
-  # biggest blob
-  # needed the internet to figure this part out
-  ## defining the kernel i.e. Structuring element 
-
-  processed = getMorphologicalProcessedImage(rotated_gradiant)
-  #cv2.imshow('Closing', ResizeWithAspectRatio(processed))
-
-  blob = getBiggestBlob(processed)
-  #cv2.imshow('blob', blob)
-
-
-  # once the keys are found, we can find the bounds of the keys and crop the roatated image
-  bot, top,left,right = getCropBounds(blob)
-  cropped = cropImage(rotated_original, top, bot, left, right)
-
-  return cropImage
 
 
 def detect_piano(image):
@@ -254,7 +232,113 @@ def detect_piano(image):
 
   # once the keys are found, we can find the bounds of the keys and crop the roatated image
   bot, top,left,right = getCropBounds(blob.copy())
-  cropped = cropImage(image, top, bot, left, right)
+  cropped = cropImage(image, top+10, bot-10, left, right)
 
-  return cropped
+  #return cropped
 
+  black_keys_val = black_keys(cropped)
+  return black_keys_val
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output_filled.png'):
+
+#  # read image 
+#  image = cv2.imread(image_path)
+#  if image is None:
+#    print(f"Error: Unable to read image at {image_path}")
+#    return
+
+#  # gray scale the image
+#  gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+#  #threshold the gray to get a binary image, we only want the white piano keys really
+#  ret, gray_thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY) 
+
+#  # perform a quick edge detection
+#  sobel_x = cv2.Sobel(gray_thresh, cv2.CV_64F, 1, 0, ksize=3)  #Horizontal edges
+#  sobel_y = cv2.Sobel(gray_thresh, cv2.CV_64F, 0, 1, ksize=3)  #Vertical edges
+
+
+#  gradient_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
+#  gradient_magnitude = np.uint8(255 * gradient_magnitude / np.max(gradient_magnitude))
+
+
+#  # perform the hough transformation, where we will use this to find the dominant orientation
+#  line_image = np.zeros_like(gray)
+
+#  lines = cv2.HoughLines(gradient_magnitude, 
+#                          rho=1, 
+#                          theta=np.pi/180, 
+#                          threshold=200)
+
+#  #get all angles
+#  normal_angles = []    
+#  for line in lines:
+#    rho, theta = line[0]
+#    normal_angles.append(np.degrees(theta) % 180)
+
+#    drawLineFromHough(line_image,rho,theta=theta)
+
+      
+#  #calculate the dominant angle
+
+#  #print(normal_angles)
+#  #find dom angle
+#  #angle_counter = Counter(normal_angles)
+#  #dom_angle = max(angle_counter, key=angle_counter.get)
+
+#  angle_bins = np.histogram(normal_angles, bins=18, range=(0, 180))
+#  dom_angle = angle_bins[1][np.argmax(angle_bins[0])]
+
+#  print(dom_angle)
+  
+#  # display all of the images so far
+#  DISPLAY_WIDTH = 500
+#  #cv2.imshow('omg', image)
+#  #cv2.imshow('gray', ResizeWithAspectRatio(image=gray, width=DISPLAY_WIDTH))
+#  #cv2.imshow('gray_thresh', ResizeWithAspectRatio(image=gray_thresh, width=DISPLAY_WIDTH))
+#  #cv2.imshow('Gradient Magnitude (Sobel)', ResizeWithAspectRatio(image=gradient_magnitude, width=DISPLAY_WIDTH))
+#  #cv2.imshow('Hough', ResizeWithAspectRatio(image=line_image, width=DISPLAY_WIDTH))
+
+
+#  # perform the roation in respect to the dominant angle, and display the results
+
+#  rotated_original = rotation(image, dom_angle - 90)
+#  rotated_gradiant = rotation(gradient_magnitude, dom_angle - 90)
+
+
+#  #cv2.imshow('Rotate OG', ResizeWithAspectRatio(image=rotated_original, width=DISPLAY_WIDTH))
+#  #cv2.imshow('Rotate Grad', ResizeWithAspectRatio(image=rotated_gradiant, width=DISPLAY_WIDTH))
+
+#  # use morphlogical image processing to extend edge lines horizontally 
+#  # which is then blobbed together, allowing us to find the piano keys, as they will be the
+#  # biggest blob
+#  # needed the internet to figure this part out
+#  ## defining the kernel i.e. Structuring element 
+
+#  processed = getMorphologicalProcessedImage(rotated_gradiant)
+#  #cv2.imshow('Closing', ResizeWithAspectRatio(processed))
+
+#  blob = getBiggestBlob(processed)
+#  #cv2.imshow('blob', blob)
+
+
+#  # once the keys are found, we can find the bounds of the keys and crop the roatated image
+#  bot, top,left,right = getCropBounds(blob)
+#  cropped = cropImage(rotated_original, top, bot, left, right)
+
+#  return cropImage
