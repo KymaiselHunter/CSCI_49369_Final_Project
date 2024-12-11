@@ -221,7 +221,7 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 def detect_piano(image):
   if image is None:
     print(f"Error: Unable to read image at {image_path}")
-    return
+    return None
 
   # gray scale the image
   gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -238,63 +238,14 @@ def detect_piano(image):
   gradient_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
   gradient_magnitude = np.uint8(255 * gradient_magnitude / np.max(gradient_magnitude))
 
-  # perform the hough transformation, where we will use this to find the dominant orientation
-  #line_image = np.zeros_like(gray)
-
-  lines = cv2.HoughLines(gradient_magnitude, 
-                          rho=1, 
-                          theta=np.pi/180, 
-                          threshold=200)
-  #get all angles
-  normal_angles = []    
-
-  print(type(lines))
-  if lines is None:
-    return None
-  for line in lines:
-    rho, theta = line[0]
-    normal_angles.append(np.degrees(theta) % 180)
-
-    #drawLineFromHough(line_image,rho,theta=theta)
-
-      
-  #calculate the dominant angle
-
-  #print(normal_angles)
-  #find dom angle
-  #angle_counter = Counter(normal_angles)
-  #dom_angle = max(angle_counter, key=angle_counter.get)
-
-  angle_bins = np.histogram(normal_angles, bins=18, range=(0, 180))
-  dom_angle = angle_bins[1][np.argmax(angle_bins[0])]
-
-  print(dom_angle)
-  
-  # display all of the images so far
-  DISPLAY_WIDTH = 500
-  #cv2.imshow('omg', image)
-  #cv2.imshow('gray', ResizeWithAspectRatio(image=gray, width=DISPLAY_WIDTH))
-  #cv2.imshow('gray_thresh', ResizeWithAspectRatio(image=gray_thresh, width=DISPLAY_WIDTH))
-  #cv2.imshow('Gradient Magnitude (Sobel)', ResizeWithAspectRatio(image=gradient_magnitude, width=DISPLAY_WIDTH))
-  #cv2.imshow('Hough', ResizeWithAspectRatio(image=line_image, width=DISPLAY_WIDTH))
-
-
-  # perform the roation in respect to the dominant angle, and display the results
-
-  rotated_original = rotation(image, dom_angle - 90)
-  rotated_gradiant = rotation(gradient_magnitude, dom_angle - 90)
-
-
-  #cv2.imshow('Rotate OG', ResizeWithAspectRatio(image=rotated_original, width=DISPLAY_WIDTH))
-  #cv2.imshow('Rotate Grad', ResizeWithAspectRatio(image=rotated_gradiant, width=DISPLAY_WIDTH))
-
   # use morphlogical image processing to extend edge lines horizontally 
   # which is then blobbed together, allowing us to find the piano keys, as they will be the
   # biggest blob
   # needed the internet to figure this part out
   ## defining the kernel i.e. Structuring element 
 
-  processed = getMorphologicalProcessedImage(rotated_gradiant)
+  #processed = getMorphologicalProcessedImage(rotated_gradiant)
+  processed = getMorphologicalProcessedImage(gradient_magnitude)
   #cv2.imshow('Closing', ResizeWithAspectRatio(processed))
 
   blob = getBiggestBlob(processed)
@@ -303,7 +254,7 @@ def detect_piano(image):
 
   # once the keys are found, we can find the bounds of the keys and crop the roatated image
   bot, top,left,right = getCropBounds(blob)
-  cropped = cropImage(rotated_original, top, bot, left, right)
+  cropped = cropImage(image, top, bot, left, right)
 
-  return cropped
+  return cropped, blob
 

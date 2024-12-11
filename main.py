@@ -20,6 +20,8 @@ black_frame = np.zeros((100,500,3), dtype =np.uint8)
 piano_frame = black_frame
 piano_timestamp = 0
 
+piano_blob = black_frame
+
 def main():
   model_path = './models/hand_landmarker.task'
 
@@ -87,12 +89,14 @@ def main():
 
 
       global piano_frame
-      found = piano.detect_piano(output_image.numpy_view())
+      global piano_blob
+      found, found2 = piano.detect_piano(output_image.numpy_view())
       if found is None:
         return
       else:
         #print('uh huh')
         piano_frame = found
+        piano_blob = found2
 
       #piano_frame = output_image.numpy_view()
       #print('pelase?')
@@ -110,7 +114,7 @@ def main():
     # The landmarker is initialized. Use it here.
     # ...
     #grab the cam to be used
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     # Set the desired width and height for the capture
     # Try higher resolutions like 1280x720 or 1920x1080 for a wider field of view
@@ -150,6 +154,8 @@ def main():
 
       cv2.imshow('cam',frame)#cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
       cv2.imshow('piano', piano_frame)
+      cv2.imshow('bob', piano_frame)
+
 
 
 
