@@ -192,7 +192,7 @@ def cropImage(image, top_row, bottom_row, left_col, right_col):
 
 #    #return black_key_coords
     
-def black_keys(image):
+def black_keysOG(image):
     gray = image.copy()
     if len(image.shape) > 2:  # If image has multiple channels (e.g., RGB)
       gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -211,7 +211,7 @@ def black_keys(image):
     # Label connected components
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(labeled, connectivity=8)
 
-    MIN_SIZE = 100
+    MIN_SIZE = 500
     # Filter out small objects
     for label_id in range(1, num_labels):
       if stats[label_id, cv2.CC_STAT_AREA] < MIN_SIZE:
@@ -240,6 +240,76 @@ def black_keys(image):
         color_index += 1
 
     return colored_image
+
+
+def black_keys(image):
+    if image is None or image.size == 0:
+        print("Error: Invalid or empty input image!")
+        return image, {}
+
+    # Ensure the image is grayscale
+    gray = image.copy()
+    if len(image.shape) > 2:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Invert and process the image
+    inverted_image = 255 - gray
+    gaussian = cv2.GaussianBlur(inverted_image, (7, 7), 0)
+    _, binarized_image = cv2.threshold(gaussian, 200, 255, cv2.THRESH_BINARY)
+
+    # Label connected components
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binarized_image, connectivity=8)
+
+    # Filter small objects
+    MIN_SIZE = 500
+    for label_id in range(1, num_labels):
+        if stats[label_id, cv2.CC_STAT_AREA] < MIN_SIZE:
+            binarized_image[labels == label_id] = 0
+
+    # Recalculate connected components after filtering
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binarized_image, connectivity=8)
+    if num_labels <= 1:
+        return image, {}
+
+    # Sort centroids by horizontal position
+    key_centroids = [(stats[label_id, cv2.CC_STAT_LEFT], label_id) for label_id in range(1, num_labels)]
+    key_centroids.sort(key=lambda x: x[0])
+
+    x_coords = [x for x, _ in key_centroids]
+    gaps = [x2 - x1 for x1, x2 in zip(x_coords[:-1], x_coords[1:])]
+    median_gap = np.median(gaps) if gaps else 0
+
+    # Define notes and colors
+    notes = ["A#", "C#", "D#", "F#", "G#"]
+    colors = {
+      "C#": (128, 0, 128),  # Purple in BGR
+      "D#": (0, 255, 255),  # Yellow in BGR
+      "F#": (255, 0, 128),  # Red-purple in BGR
+      "G#": (47, 255, 173),  # Yellow-green in BGR
+      "A#": (0, 0, 255)      # Red in BGR
+    }
+    note_positions = {}
+    colored_image = np.zeros_like(image, dtype=np.uint8)
+
+    # Assign notes based on centroids
+    last_x = None
+    note_index = 0
+
+    for x, label_id in key_centroids:
+        # Smoothly transition between octaves
+        if last_x is not None and (x - last_x) > 2.0 * median_gap:  # Increased threshold
+            print(f"Large gap detected at x={x}, transitioning to a new octave.")
+            note_index = 0  # Reset note index
+
+        note = notes[note_index % len(notes)]  # Assign note
+        note_positions[note] = (x, label_id)  # Store note position
+        colored_image[labels == label_id] = colors[note]  # Color key
+
+        note_index += 1
+        last_x = x
+
+    return colored_image#, note_positions
+
 
 def detect_piano(image):
   if image is None:
