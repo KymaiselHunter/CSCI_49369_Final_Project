@@ -219,18 +219,27 @@ def black_keys(image):
 
  # Create a color palette
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(labeled, connectivity=8)
-    color_palette = np.random.randint(0, 255, size=(num_labels, 3), dtype=np.uint8)
-    color_palette[0] = [0, 0, 0]  # Background color
+    #color_palette = np.random.randint(0, 255, size=(num_labels, 3), dtype=np.uint8)
+    #color_palette[0] = [0, 0, 0]  # Background color
 
-    # Assign colors to each label
+    ## Assign colors to each label
+    #colored_image = np.zeros_like(image, dtype=np.uint8)
+    #for label_id in range(1, num_labels):
+    #    colored_image[labels == label_id] = color_palette[label_id]
+
+    #return colored_image
+
+     # Define a color palette for 5 black keys
+    colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (0, 255, 255)]
+
+    # Assign colors to detected keys based on their order, handling repeated notes
     colored_image = np.zeros_like(image, dtype=np.uint8)
+    color_index = 0
     for label_id in range(1, num_labels):
-        colored_image[labels == label_id] = color_palette[label_id]
+        colored_image[labels == label_id] = colors[color_index % len(colors)]
+        color_index += 1
 
     return colored_image
-
-
-
 
 def detect_piano(image):
   if image is None:
