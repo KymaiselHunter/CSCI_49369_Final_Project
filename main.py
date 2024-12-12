@@ -76,6 +76,29 @@ def main():
       #dataHold.pop()
       dataHold.push(result, timestamp_ms)
       piano_timestamp = timestamp_ms
+      thumb_tip = hand_landmarks.landmark[4]
+      index_tip = hand_landmarks.landmark[8]
+      middle_tip = hand_landmarks.landmark[12]
+      ring_tip = hand_landmarks.landmark[16]
+      h, w, c = frame.shape
+      fingertip_locations = []
+      fingertip.append((int(thumb_tip.x * w), int(thumb_tip.y * h)))
+      fingertip.append(int(index_tip.x * w), int(index_tip.y * h))
+      fingertip.append(int(middle_tip.x * w), int(middle_tip.y * h))
+      fingertip.append(int(ring_tip.x * w), int(ring_tip.y * h))
+      #thumb_pos = (int(thumb_tip.x * w), int(thumb_tip.y * h))
+      #index_pos = (int(index_tip.x * w), int(index_tip.y * h))
+      #middle_pos = (int(middle_tip.x * w), int(middle_tip.y * h))
+      #ring_pos = (int(ring_tip.x * w), int(ring_tip.y * h))
+      #holds the keys that are being pressed
+      global piano_coords
+      fingertip_key_pressed = set()
+      if piano_coords != None:
+        for key, coords in piano_coords:
+          for fingertip_location in fingertip_locations:
+            if fingertip_location in coords:
+              fingertip_key_pressed.add(key)
+      print(fingertip_key_pressed)
       return
     else:
       #print(type(output_image))
@@ -91,13 +114,14 @@ def main():
 
       global piano_frame
       found, found_coords = piano.detect_piano(output_image.numpy_view())
+      #print(f"______________\n {found_coords}")
       if found is None or found_coords is None:
         return
       else:
         #print('uh huh')
         piano_frame = found
         piano_coords = found_coords
-
+      
 
       #piano_frame = output_image.numpy_view()
       #print('pelase?')
@@ -115,7 +139,7 @@ def main():
     # The landmarker is initialized. Use it here.
     # ...
     #grab the cam to be used
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     # Set the desired width and height for the capture
     # Try higher resolutions like 1280x720 or 1920x1080 for a wider field of view
