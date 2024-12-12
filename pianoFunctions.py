@@ -242,7 +242,7 @@ def black_keysOG(image):
     return colored_image
 
 
-def black_keys(image):
+def black_keys(image, bot = 0, left = 0):
     if image is None or image.size == 0:
         print("Error: Invalid or empty input image!")
         return image, {}
@@ -296,19 +296,31 @@ def black_keys(image):
     note_index = 0
 
     for x, label_id in key_centroids:
-        # Smoothly transition between octaves
-        if last_x is not None and (x - last_x) > 2.0 * median_gap:  # Increased threshold
-            print(f"Large gap detected at x={x}, transitioning to a new octave.")
-            note_index = 0  # Reset note index
+      # Smoothly transition between octaves
+      if last_x is not None and (x - last_x) > 2.0 * median_gap:  # Increased threshold
+        note_index = 0  # Reset note index
 
-        note = notes[note_index % len(notes)]  # Assign note
-        note_positions[note] = (x, label_id)  # Store note position
-        colored_image[labels == label_id] = colors[note]  # Color key
+      note = notes[note_index % len(notes)]  # Assign note
+    
+      # Initialize a set for this note if it doesn't exist yet
+      if note not in note_positions:
+          note_positions[note] = set()
 
-        note_index += 1
-        last_x = x
+      # Find all pixels belonging to this component
+      ys, xs = np.where(labels == label_id)
+      # Add all (x, y) coordinates of the object to the note's set
+      # Note: x corresponds to column index, y corresponds to row index
+      # We store (x, y) pairs consistently as (col, row)
+      for px, py in zip(xs, ys):
+          note_positions[note].add((px+bot, py+left))
 
-    return colored_image#, note_positions
+
+      colored_image[labels == label_id] = colors[note]  # Color key
+
+      note_index += 1
+      last_x = x
+
+    return colored_image, note_positions
 
 
 def detect_piano(image):
@@ -352,8 +364,8 @@ def detect_piano(image):
 
   #return cropped
 
-  black_keys_image = black_keys(cropped)
-  return black_keys_image
+  black_keys_image, black_note_coords = black_keys(cropped,bot-10, left)
+  return black_keys_image, black_note_coords
 
 
 

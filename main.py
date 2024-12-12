@@ -19,6 +19,7 @@ import pianoFunctions as piano
 black_frame = np.zeros((100,500,3), dtype =np.uint8)
 piano_frame = black_frame
 piano_timestamp = 0
+piano_coords = None
 
 def main():
   model_path = './models/hand_landmarker.task'
@@ -89,12 +90,14 @@ def main():
 
 
       global piano_frame
-      found = piano.detect_piano(output_image.numpy_view())
-      if found is None:
+      found, found_coords = piano.detect_piano(output_image.numpy_view())
+      if found is None or found_coords is None:
         return
       else:
         #print('uh huh')
         piano_frame = found
+        piano_coords = found_coords
+
 
       #piano_frame = output_image.numpy_view()
       #print('pelase?')
