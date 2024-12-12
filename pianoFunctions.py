@@ -211,37 +211,24 @@ def black_keys(image):
     # Label connected components
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(labeled, connectivity=8)
 
-    MIN_SIZE = 50
+    MIN_SIZE = 100
     # Filter out small objects
     for label_id in range(1, num_labels):
       if stats[label_id, cv2.CC_STAT_AREA] < MIN_SIZE:
         labeled[labels == label_id] = 0
 
-    # # Fill holes in remaining objects
-    #labeled = labeled.astype(np.uint8)  # Ensure image is 8-bit for fillHoles
-    #cv2.fillHoles(labeled, labeled)
+ # Create a color palette
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(labeled, connectivity=8)
+    color_palette = np.random.randint(0, 255, size=(num_labels, 3), dtype=np.uint8)
+    color_palette[0] = [0, 0, 0]  # Background color
 
-    return labeled
+    # Assign colors to each label
+    colored_image = np.zeros_like(image, dtype=np.uint8)
+    for label_id in range(1, num_labels):
+        colored_image[labels == label_id] = color_palette[label_id]
 
-    ## Fill holes using flood fill
-    ## Create a mask for flood filling
-    ##print('test')
-    ##print("Shape of binarized_image:", binarized_image.shape)
+    return colored_image
 
-    #height, width = binarized_image.shape
-    ##return image
-    #flood_fill_mask = np.zeros((height + 2, width + 2), np.uint8)
-
-    ## Flood fill the background starting from a point outside the object
-    #cv2.floodFill(binarized_image, flood_fill_mask, seedPoint=(0, 0), newVal=255)
-
-    ## Invert the flood-filled image
-    #flood_filled_inverted = cv2.bitwise_not(binarized_image)
-
-    ## Combine the original binarized image and the inverted flood-filled image
-    #filled_image = cv2.bitwise_or(binarized_image, flood_filled_inverted)
-
-    #return filled_image
 
 
 
@@ -282,7 +269,7 @@ def detect_piano(image):
 
   # once the keys are found, we can find the bounds of the keys and crop the roatated image
   bot, top,left,right = getCropBounds(blob.copy())
-  cropped = cropImage(image, top, bot, left, right)
+  cropped = cropImage(image, top+10, bot-10, left, right)
 
   #return cropped
 
