@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from collections import Counter
 import math
+import OutputKeyboard as key
 #import Counter fromcollections #for coun ter
 
 # nice resizeing 
@@ -305,8 +306,6 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
     #cv2.imshow('test', cropped)
     
 
-
-
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -322,4 +321,13 @@ def sobel_hough_fill_holes(image_path, threshold=127, output_path='binary_output
 
 if __name__ == "__main__":
     
-    sobel_hough_fill_holes('./images/cat.png', threshold=127, output_path='binary_output_filled.png')
+    sobel_hough_fill_holes('./images/image2.png', threshold=127, output_path='binary_output_filled.png')
+    test = key.virtualKeyboard()
+    test.start()
+    test.add_note("C#", is_green=True)
+    test.add_note("D#", is_green=True)
+    test.add_note("F#", is_green=True)
+    test.add_note("G#", is_green=True)
+    test.add_note("A#", is_green=True)
+    
+
