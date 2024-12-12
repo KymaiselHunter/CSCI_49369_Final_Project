@@ -69,15 +69,17 @@ def main():
   def process_result(result: HandLandmarkerResult, output_image: mp.Image, timestamp_ms: int):
     #print('hand landmarker result: {}'.format(result))
     #print(result.handedness)
+    global piano_timestamp
+
     if result.handedness:
       #dataHold.pop()
       dataHold.push(result, timestamp_ms)
+      piano_timestamp = timestamp_ms
       return
     else:
       #print(type(output_image))
       #piano.sobel_hough_fill_holes(output_image)
       #cv2.imshow('test', test)
-      global piano_timestamp
       if piano_timestamp + 5000 > timestamp_ms:
         #print('exit', piano_timestamp, timestamp_ms)
         return

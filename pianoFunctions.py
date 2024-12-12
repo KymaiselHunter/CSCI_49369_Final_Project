@@ -193,40 +193,62 @@ def cropImage(image, top_row, bottom_row, left_col, right_col):
 #    #return black_key_coords
     
 def black_keys(image):
+    gray = image.copy()
     if len(image.shape) > 2:  # If image has multiple channels (e.g., RGB)
-      image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+      gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 # Invert the grayscale values
-    inverted_image = 255 - image
+    inverted_image = 255 - gray
+
+    gaussian = cv2.GaussianBlur(inverted_image, (7,7),0)
+    #return gaussian
 
     # Threshold the inverted image to binarize it
-    _, binarized_image = cv2.threshold(inverted_image, 200, 255, cv2.THRESH_BINARY)
-    return binarized_image
+    _, binarized_image = cv2.threshold(gaussian, 200, 255, cv2.THRESH_BINARY)
+    #return binarized_image
 
-    # Fill holes using flood fill
-    # Create a mask for flood filling
-    print('test')
-    print("Shape of binarized_image:", binarized_image.shape)
 
-    height, width = binarized_image.shape
-    #return image
-    flood_fill_mask = np.zeros((height + 2, width + 2), np.uint8)
+    labeled = binarized_image.copy()
+    # Label connected components
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(labeled, connectivity=8)
 
-    # Flood fill the background starting from a point outside the object
-    cv2.floodFill(binarized_image, flood_fill_mask, seedPoint=(0, 0), newVal=255)
+    MIN_SIZE = 50
+    # Filter out small objects
+    for label_id in range(1, num_labels):
+      if stats[label_id, cv2.CC_STAT_AREA] < MIN_SIZE:
+        labeled[labels == label_id] = 0
 
-    # Invert the flood-filled image
-    flood_filled_inverted = cv2.bitwise_not(binarized_image)
+    # # Fill holes in remaining objects
+    #labeled = labeled.astype(np.uint8)  # Ensure image is 8-bit for fillHoles
+    #cv2.fillHoles(labeled, labeled)
 
-    # Combine the original binarized image and the inverted flood-filled image
-    filled_image = cv2.bitwise_or(binarized_image, flood_filled_inverted)
+    return labeled
 
-    return filled_image
+    ## Fill holes using flood fill
+    ## Create a mask for flood filling
+    ##print('test')
+    ##print("Shape of binarized_image:", binarized_image.shape)
+
+    #height, width = binarized_image.shape
+    ##return image
+    #flood_fill_mask = np.zeros((height + 2, width + 2), np.uint8)
+
+    ## Flood fill the background starting from a point outside the object
+    #cv2.floodFill(binarized_image, flood_fill_mask, seedPoint=(0, 0), newVal=255)
+
+    ## Invert the flood-filled image
+    #flood_filled_inverted = cv2.bitwise_not(binarized_image)
+
+    ## Combine the original binarized image and the inverted flood-filled image
+    #filled_image = cv2.bitwise_or(binarized_image, flood_filled_inverted)
+
+    #return filled_image
 
 
 
 def detect_piano(image):
   if image is None:
-    print(f"Error: Unable to read image at {image_path}")
+    print('unable to read image')
+    #print(f"Error: Unable to read image at {image_path}")
     return None
 
   # gray scale the image
@@ -260,7 +282,7 @@ def detect_piano(image):
 
   # once the keys are found, we can find the bounds of the keys and crop the roatated image
   bot, top,left,right = getCropBounds(blob.copy())
-  cropped = cropImage(image, top+10, bot-10, left, right)
+  cropped = cropImage(image, top, bot, left, right)
 
   #return cropped
 
