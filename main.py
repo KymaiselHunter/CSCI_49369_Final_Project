@@ -79,7 +79,7 @@ def main():
       #cv2.imshow('test', test)
       global piano_timestamp
       if piano_timestamp + 5000 > timestamp_ms:
-        print('exit', piano_timestamp, timestamp_ms)
+        #print('exit', piano_timestamp, timestamp_ms)
         return
       print(piano_timestamp, timestamp_ms)
 

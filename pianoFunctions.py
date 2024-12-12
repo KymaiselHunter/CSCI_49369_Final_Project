@@ -127,72 +127,100 @@ def cropImage(image, top_row, bottom_row, left_col, right_col):
   cropped_image = image[top_row:bottom_row, left_col:right_col]
   return cropped_image
 
-#edited code from https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
-def black_keys(cropped):
-    #make the black keys highlighted
-    thres_cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
-    thres_cropped = cv2.blur(thres_cropped,(3,3))
-    _, new_cropped = cv2.threshold(thres_cropped,127,255,cv2.THRESH_BINARY_INV)
-    
-    #kernel = np.ones((3,3),np.uint8)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 6))
-    opening = cv2.morphologyEx(new_cropped,cv2.MORPH_OPEN,kernel, iterations = 2)
-    #cv2.imshow('thres_cropped', opening)
-    sure_bg = cv2.dilate(opening,kernel,iterations=3)
+##edited code from https://docs.opencv.org/4.x/d3/db4/tutorial_py_watershed.html
+#def black_keys(cropped):
+#  #make the black keys highlighted
+#  thres_cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+#  thres_cropped = cv2.blur(thres_cropped,(3,3))
+#  _, new_cropped = cv2.threshold(thres_cropped,127,255,cv2.THRESH_BINARY_INV)
+  
+#  #kernel = np.ones((3,3),np.uint8)
+#  kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 6))
+#  opening = cv2.morphologyEx(new_cropped,cv2.MORPH_OPEN,kernel, iterations = 2)
+#  #cv2.imshow('thres_cropped', opening)
+#  sure_bg = cv2.dilate(opening,kernel,iterations=3)
 
 
-    dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
-    ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
+#  dist_transform = cv2.distanceTransform(opening,cv2.DIST_L2,5)
+#  ret, sure_fg = cv2.threshold(dist_transform,0.7*dist_transform.max(),255,0)
 
-    return thres_cropped
-    # Finding unknown region
-    sure_fg = np.uint8(sure_fg)
-    unknown = cv2.subtract(sure_bg,sure_fg)
+#  # Finding unknown region
+#  sure_fg = np.uint8(sure_fg)
+#  unknown = cv2.subtract(sure_bg,sure_fg)
 
-    # Marker labelling
-    ret, markers = cv2.connectedComponents(sure_fg)
+#  # Marker labelling
+#  ret, markers = cv2.connectedComponents(sure_fg)
 
-    # Add one to all labels so that sure background is not 0, but 1
-    markers = markers+1
+#  # Add one to all labels so that sure background is not 0, but 1
+#  markers = markers+1
 
 
-    # Now, mark the region of unknown with zero
-    markers[unknown==255] = 0
+#  # Now, mark the region of unknown with zero
+#  markers[unknown==255] = 0
 
-    temp = cropped
+#  temp = cropped
 
-    markers = cv2.watershed(temp,markers)
-    temp[markers == -1] = [255,255,0]
+#  markers = cv2.watershed(temp,markers)
+#  #temp[markers == -1] = [255,255,0]
 
-    highlighted_image = cropped.copy()
-    black_key_coords = []
+#  highlighted_image = cropped.copy()
+#  black_key_coords = []
 
-    #for loop to traverse through the "object" area
-    for marker in range(2, markers.max() + 1):
-        #create a mask for each segment
-        mask = (markers == marker).astype(np.uint8) * 255
+#  #for loop to traverse through the "object" area
+#  for marker in range(2, markers.max() + 1):
+#    #create a mask for each segment
+#    mask = (markers == marker).astype(np.uint8) * 255
 
-        #find contours
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#    #find contours
+#    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        
-        
-        for contour in contours:
-            #get the "edge" of the object
-            x, y, w, h = cv2.boundingRect(contour)
-
-            #store the coordinates
-            black_key_coords.append((x, y, w, h))  
-
-            #draw rectangle on the highlighted image
-            cv2.rectangle(highlighted_image, (x, y), (x + w, y + h), (255, 0, 0), 2)
-
-    #cv2.imshow('cropped_black_keys', temp)
-    #cv2.imshow('testy', highlighted_image)
-
-    return black_key_coords
     
     
+#    for contour in contours:
+#      #get the "edge" of the object
+#      x, y, w, h = cv2.boundingRect(contour)
+
+#      #store the coordinates
+#      black_key_coords.append((x, y, w, h))  
+
+#      #draw rectangle on the highlighted image
+#      cv2.rectangle(highlighted_image, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+#  #cv2.imshow('cropped_black_keys', temp)
+#  #cv2.imshow('testy', highlighted_image)
+#  return highlighted_image
+
+#    #return black_key_coords
+    
+def black_keys(image):
+    if len(image.shape) > 2:  # If image has multiple channels (e.g., RGB)
+      image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# Invert the grayscale values
+    inverted_image = 255 - image
+
+    # Threshold the inverted image to binarize it
+    _, binarized_image = cv2.threshold(inverted_image, 200, 255, cv2.THRESH_BINARY)
+    return binarized_image
+
+    # Fill holes using flood fill
+    # Create a mask for flood filling
+    print('test')
+    print("Shape of binarized_image:", binarized_image.shape)
+
+    height, width = binarized_image.shape
+    #return image
+    flood_fill_mask = np.zeros((height + 2, width + 2), np.uint8)
+
+    # Flood fill the background starting from a point outside the object
+    cv2.floodFill(binarized_image, flood_fill_mask, seedPoint=(0, 0), newVal=255)
+
+    # Invert the flood-filled image
+    flood_filled_inverted = cv2.bitwise_not(binarized_image)
+
+    # Combine the original binarized image and the inverted flood-filled image
+    filled_image = cv2.bitwise_or(binarized_image, flood_filled_inverted)
+
+    return filled_image
 
 
 
@@ -236,8 +264,8 @@ def detect_piano(image):
 
   #return cropped
 
-  black_keys_val = black_keys(cropped)
-  return black_keys_val
+  black_keys_image = black_keys(cropped)
+  return black_keys_image
 
 
 
