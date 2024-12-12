@@ -16,10 +16,15 @@ import math
 #piano fuctions 
 import pianoFunctions as piano
 
+#pinao display import
+import OutputKeyboard as key
+
+
 black_frame = np.zeros((100,500,3), dtype =np.uint8)
 piano_frame = black_frame
 piano_timestamp = 0
 piano_coords = None
+piano_display = None
 
 def main():
   model_path = './models/hand_landmarker.task'
@@ -61,6 +66,19 @@ def main():
 
   # instantiate the data holder
   dataHold = RecentData()
+
+  #piano display stuff
+  keyboard = key.virtualKeyboard()
+  global piano_display
+  #piano_display = keyboard.draw_highlighted_keys(set())
+  testSet = set()
+  testSet.add("A#")
+  testSet.add("C#")
+  testSet.add("D#")
+  testSet.add("F#")
+  testSet.add("G#")
+
+  piano_display = keyboard.draw_highlighted_keys(testSet)
 
 
   # Create a hand landmarker instance with the live stream mode:
@@ -104,13 +122,17 @@ def main():
           for fingertip_location in fingertip_locations:
             if fingertip_location in coords:
               fingertip_key_pressed.add(key)
+
+      global piano_display
+      piano_display = keyboard.draw_highlighted_keys(fingertip_key_pressed)
       print(fingertip_key_pressed)
       return
     else:
       #print(type(output_image))
       #piano.sobel_hough_fill_holes(output_image)
       #cv2.imshow('test', test)
-      if piano_timestamp + 5000 > timestamp_ms:
+      
+      if piano_timestamp + 10000 > timestamp_ms:
         #print('exit', piano_timestamp, timestamp_ms)
         return
       print(piano_timestamp, timestamp_ms)
@@ -185,6 +207,7 @@ def main():
 
       cv2.imshow('cam',frame)#cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
       cv2.imshow('piano', piano_frame)
+      cv2.imshow('display', piano_display)
 
 
 

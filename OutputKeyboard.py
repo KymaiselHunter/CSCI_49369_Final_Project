@@ -1,71 +1,72 @@
 import cv2
 import numpy as np
-from collections import Counter
-import math
-from tkinter import *
-from tkinter import ttk
-from PIL import Image, ImageTk
-
-#Future add, when it is detected a key is pressed in the image, have that output in the keyboard image
-#Also, based on keyboard size (white keys and black keys), we will hopefully create a virtual keyboard just on that
-
-#def keyboardCreation(white_keys, black_keys)
 
 KEY_COORDINATES = {
-    "C": 10,   # X-coordinate for "C"
-    "C#": 85,  # X-coordinate for "C#"
-    "D": 50,   # X-coordinate for "D"
-    "D#": 170,  # X-coordinate for "D#"
-    "E": 90,   # X-coordinate for "E"
-    "F": 130,  # X-coordinate for "F"
-    "F#": 340, # X-coordinate for "F#"
-    "G": 170,  # X-coordinate for "G"
-    "G#": 430, # X-coordinate for "G#"
-    "A": 210,  # X-coordinate for "A"
-    "A#": 510, # X-coordinate for "A#"
-    "B": 250,  # X-coordinate for "B"
+    "C": 10,
+    "C#": 85,
+    "D": 50,
+    "D#": 170,
+    "E": 90,
+    "F": 130,
+    "F#": 340,
+    "G": 170,
+    "G#": 430,
+    "A": 210,
+    "A#": 510,
+    "B": 250,
 }
 
-
 class virtualKeyboard:
-    def __init__(self) -> None:
-        self.window = Tk()
-        self.window.geometry('600x400')
-        self.window.title('Virtual Keyboard')
+    def __init__(self, base_path='./KeyImages/smallKey.png', overlay_path='./KeyImages/key_green_top.png'):
+        # Load the base keyboard image in BGR
+        self.base_img = cv2.imread(base_path, cv2.IMREAD_COLOR)
+        if self.base_img is None:
+            raise FileNotFoundError(f"Base image not found: {base_path}")
+        self.base_img = cv2.resize(self.base_img, (600,400))
 
-        self.keyboard_image = Image.open('./KeyImages/smallKey.png').resize((600, 400))
-        self.keyboard_tk = ImageTk.PhotoImage(self.keyboard_image)
+        # Load the overlay image with alpha channel (BGRA)
+        overlay_img = cv2.imread(overlay_path, cv2.IMREAD_UNCHANGED)
+        if overlay_img is None:
+            raise FileNotFoundError(f"Overlay image not found: {overlay_path}")
 
-        # Canvas (so we can add things on top of the current keyboard)
-        self.canvas = Canvas(self.window, width=600, height=400)
-        self.canvas.pack()
+        # Resize overlay if needed (50x400 as previously mentioned)
+        self.overlay_img = cv2.resize(overlay_img, (50, 400))
 
-        # Add keyboard image
-        self.canvas.create_image(0, 0, image=self.keyboard_tk, anchor="nw")
+    def draw_highlighted_keys(self, notes):
+        # Make a copy of the base image so we don't modify the original
+        result_img = self.base_img.copy()
 
-        self.notes_widgets = {}
+        # For each note, paste overlay onto result_img at given coordinates
+        for note in notes:
+            if note not in KEY_COORDINATES:
+                print(f"Warning: No coordinate defined for note '{note}'")
+                continue
 
-        self.green_key_image = Image.open('./KeyImages/key_green_top.png').resize((50, 400))  # Adjust size
-        self.green_key_tk = ImageTk.PhotoImage(self.green_key_image)
+            x = KEY_COORDINATES[note]
+            y = 0  # top-left corner
 
-    def start(self):
-        """Start the Tkinter main loop."""
-        self.window.mainloop()
+            h, w = self.overlay_img.shape[:2]
+            if x + w > result_img.shape[1] or y + h > result_img.shape[0]:
+                print("part1")
+                print(x + w > result_img.shape[1])
+                print( y + h > result_img.shape[0])
+                print(f"Warning: Overlay for note '{note}' out of image bounds, skipping.")
+                continue
 
-    def add_note(self, key: str, is_green: bool = True) -> None:
-        x = KEY_COORDINATES[key]
-        y = 200  
+            # Extract overlay regions
+            overlay_region = self.overlay_img[..., :3]  # BGR channels
+            alpha_channel = self.overlay_img[..., 3] / 255.0  # Normalize alpha to [0,1]
 
-        
-        key_image = self.green_key_tk 
+            # Get region of interest from the result image
+            roi = result_img[y:y+h, x:x+w]
 
-        
-        self.canvas.create_image(x, y, image=key_image, anchor="center")
+            # Perform alpha blending
+            for c in range(3):
+                roi[..., c] = (alpha_channel * overlay_region[..., c] +
+                               (1 - alpha_channel) * roi[..., c])
 
+            # Place blended region back
+            result_img[y:y+h, x:x+w] = roi
 
-
-
-
-
-
+        return result_img
 
