@@ -1,5 +1,8 @@
 # CSCI_49369_Final_Project
 
+## Demo
+[Demo](https://youtu.be/jYMJZ6l2S64)  
+
 
 ## Usage
 
@@ -29,3 +32,8 @@ Install dependecies into venv from requirement.txt
 ```bash
   pip install -r requirements.txt
   ```
+
+Once set up, the code you may run the code 
+   ```bash
+   python main.py
+   ```
