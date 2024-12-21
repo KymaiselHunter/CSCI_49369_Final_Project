@@ -1,0 +1,219 @@
+# hand imports
+import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks. python import vision
+
+import cv2
+
+import utilities as util
+
+# piano imports
+#import cv2
+import numpy as np
+from collections import Counter
+import math
+
+#piano fuctions 
+import pianoFunctions as piano
+
+#pinao display import
+import OutputKeyboard as key
+
+
+black_frame = np.zeros((100,500,3), dtype =np.uint8)
+piano_frame = black_frame
+piano_timestamp = 0
+piano_coords = None
+piano_display = None
+
+def main():
+  model_path = './models/hand_landmarker.task'
+
+  BaseOptions = mp.tasks.BaseOptions
+  HandLandmarker = mp.tasks.vision.HandLandmarker
+  HandLandmarkerOptions = mp.tasks.vision.HandLandmarkerOptions
+  HandLandmarkerResult = mp.tasks.vision.HandLandmarkerResult
+  VisionRunningMode = mp.tasks.vision.RunningMode
+
+  
+
+
+  # recent Data class is just a nice way of storing the most recent face detection
+  # data since it runs asyncynously
+  class RecentData:
+    def __init__(self):
+      self.results = None
+      self.time = None
+
+    def top(self):
+      return self.results, self.time
+    
+    def pop(self):
+      if self.results:
+        holdRes = self.results
+        holdTime = self.time
+
+        self.results = None
+        self.time = None
+
+        return holdRes, holdTime
+      else:
+        return False, False
+    
+    def push(self,result, time):
+      self.results = result
+      self.time = time
+
+  # instantiate the data holder
+  dataHold = RecentData()
+
+  #piano display stuff
+  keyboard = key.virtualKeyboard()
+  global piano_display
+  #piano_display = keyboard.draw_highlighted_keys(set())
+  testSet = set()
+  testSet.add("A#")
+  testSet.add("C#")
+  testSet.add("D#")
+  testSet.add("F#")
+  testSet.add("G#")
+
+  piano_display = keyboard.draw_highlighted_keys(testSet)
+
+
+  # Create a hand landmarker instance with the live stream mode:
+  def print_result(result: HandLandmarkerResult, output_image: mp.Image, timestamp_ms: int):
+    print('hand landmarker result: {}'.format(result))
+
+  def process_result(result: HandLandmarkerResult, output_image: mp.Image, timestamp_ms: int):
+    #print('hand landmarker result: {}'.format(result))
+    #print(result.handedness)
+    global piano_timestamp
+
+    if result.handedness:
+      #dataHold.pop()
+      dataHold.push(result, timestamp_ms)
+      piano_timestamp = timestamp_ms
+      #print(result)
+      thumb_tip = result.hand_landmarks[0][4] 
+      index_tip = result.hand_landmarks[0][8]
+      middle_tip = result.hand_landmarks[0][12]
+      ring_tip = result.hand_landmarks[0][16]
+
+      h, w, c = frame.shape
+      fingertip_locations = []
+
+      fingertip_locations.append((int(thumb_tip.x * w), int(thumb_tip.y * h)))
+      fingertip_locations.append((int(index_tip.x * w), int(index_tip.y * h)))
+      fingertip_locations.append((int(middle_tip.x * w), int(middle_tip.y * h)))
+      fingertip_locations.append((int(ring_tip.x * w), int(ring_tip.y * h)))
+
+      #print('locs')
+      #thumb_pos = (int(thumb_tip.x * w), int(thumb_tip.y * h))
+      #index_pos = (int(index_tip.x * w), int(index_tip.y * h))
+      #middle_pos = (int(middle_tip.x * w), int(middle_tip.y * h))
+      #ring_pos = (int(ring_tip.x * w), int(ring_tip.y * h))
+      #holds the keys that are being pressed
+      global piano_coords
+      print('p coorsd')
+      fingertip_key_pressed = set()
+      if piano_coords != None:
+        for key, coords in piano_coords.items():
+          for fingertip_location in fingertip_locations:
+            if fingertip_location in coords:
+              fingertip_key_pressed.add(key)
+
+      global piano_display
+      piano_display = keyboard.draw_highlighted_keys(fingertip_key_pressed)
+      print(fingertip_key_pressed)
+      return
+    else:
+      #print(type(output_image))
+      #piano.sobel_hough_fill_holes(output_image)
+      #cv2.imshow('test', test)
+      
+      if piano_timestamp + 10000 > timestamp_ms:
+        #print('exit', piano_timestamp, timestamp_ms)
+        return
+      print(piano_timestamp, timestamp_ms)
+
+      piano_timestamp = timestamp_ms
+
+
+      global piano_frame
+      found, found_coords = piano.detect_piano(output_image.numpy_view())
+      #print(f"______________\n {found_coords}")
+      if found is None or found_coords is None:
+        return
+      else:
+        #print('uh huh')
+        piano_frame = found
+        piano_coords = found_coords
+      
+
+      #piano_frame = output_image.numpy_view()
+      #print('pelase?')
+      return
+
+
+
+  options = HandLandmarkerOptions(
+      base_options=BaseOptions(model_asset_path=model_path),
+      running_mode=VisionRunningMode.LIVE_STREAM,
+      result_callback=process_result,
+      num_hands=2
+      )
+  with HandLandmarker.create_from_options(options) as landmarker:
+    # The landmarker is initialized. Use it here.
+    # ...
+    #grab the cam to be used
+    cap = cv2.VideoCapture(1)
+
+    # Set the desired width and height for the capture
+    # Try higher resolutions like 1280x720 or 1920x1080 for a wider field of view
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+    # Use OpenCV’s VideoCapture to start capturing from the webcam.
+    while cap.isOpened():
+
+    # Create a loop to read the latest frame from the camera using VideoCapture#read()
+      ret, frame = cap.read()
+      #cv2.imshow('original', frame)
+
+      if not ret:
+        continue
+
+      #quit program via "q" press
+      if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+      # Convert the frame received from OpenCV to a MediaPipe’s Image object.
+      mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+
+      # Send live image data to perform face detection.
+      # The results are accessible via the `result_callback` provided in
+      # the `FaceDetectorOptions` object.
+      # The face detector must be created with the live stream mode.
+      frame_timestamp_ms = int(cap.get(cv2.CAP_PROP_POS_MSEC))  # Get current time in milliseconds
+      #print(type(mp_image))
+      landmarker.detect_async(mp_image, frame_timestamp_ms)
+
+      res, ms = dataHold.top()
+      #if res:
+      #  print( abs(ms-frame_timestamp_ms))
+      if res and 500 > abs(ms-frame_timestamp_ms):
+        frame = util.draw_landmarks_on_image(frame,res)
+
+      cv2.imshow('cam',frame)#cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+      cv2.imshow('piano', piano_frame)
+      cv2.imshow('display', piano_display)
+
+
+
+
+  cap.release()
+  cv2.destroyAllWindows()
+
+if __name__ == "__main__":  
+  main()
